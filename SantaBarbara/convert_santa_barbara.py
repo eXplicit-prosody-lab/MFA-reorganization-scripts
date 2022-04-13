@@ -25,14 +25,23 @@ def get_utterances_p2_4(file, textgrid_file):
         path to textgrid file
     """
 
-    with open(file) as f1:
+    with open(file, encoding='ISO-8859-15') as f1:
         lines = f1.readlines()
     
     ordered_tups = []
     speakers = defaultdict(list)
     skipped = 0
-    
+
+    lines_wo_empty = []
+    for line in lines:
+        if line.strip() == "":
+            continue
+        lines_wo_empty.append(line)
+    lines = lines_wo_empty
+
     for i,line in enumerate(lines):
+        if line.strip() == "":
+            continue
         if '\x00' in line:
             line = "c".join(line.split('\x00'))
         splitline = re.split("\t+", line)
@@ -118,7 +127,7 @@ def get_utterances_p1(file, textgrid_file):
         path to textgrid file
     """
 
-    with open(file) as f1:
+    with open(file, encoding='ISO-8859-15') as f1:
         lines = f1.readlines()
     
     ordered_tups = []
@@ -263,7 +272,7 @@ def clean(speakers):
         new_speakers[speaker] = new_tups
     return new_speakers
 
-def convert_all(source_dir, destination_dir, exclude, move_wav = False):
+def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False):
     """
     walk throught source dir, convert all .trn files to .textgrids
     copy wav files to destination dir
@@ -289,9 +298,9 @@ def convert_all(source_dir, destination_dir, exclude, move_wav = False):
                         shutil.copy(os.path.join(root,wav_name), os.path.join(destination_dir, wav_name))
                         print('copied')
                     if "Part1" in root:
-                        get_utterances_p1(os.path.join(root,file), os.path.join(destination_dir, just_name+".textgrid"))
+                        get_utterances_p1(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
                     else:
-                        get_utterances_p2_4(os.path.join(root,file), os.path.join(destination_dir, just_name+".textgrid"))
+                        get_utterances_p2_4(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
 
 
 
