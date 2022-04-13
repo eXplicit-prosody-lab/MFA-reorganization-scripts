@@ -4,6 +4,7 @@ import re
 from collections import defaultdict
 import textgrid as tg
 import sys
+import pandas as pd
 
 remove_regex = re.compile(r"<<?[A-Z@]+|[A-Z@]+>?>|\(?\((?!H)[A-Z\-]+\)\)?")
 sub_regex = re.compile(r"\[[\d!]?|[\d!]?\]|\.{2,3}|[<>!=_%+;`\/\\&~]")
@@ -107,7 +108,7 @@ def get_utterances_p2_4(file, textgrid_file):
     textgrid.write(textgrid_file)
 
     print("skipped: {}".format(skipped))
-
+    return ordered_tups
 
 
 
@@ -226,6 +227,7 @@ def get_utterances_p1(file, textgrid_file):
     textgrid.write(textgrid_file)
 
     print("skipped: {}".format(skipped))
+    return ordered_tups
 
 def clean(speakers):
     """
@@ -272,6 +274,7 @@ def clean(speakers):
         new_speakers[speaker] = new_tups
     return new_speakers
 
+
 def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False):
     """
     walk throught source dir, convert all .trn files to .textgrids
@@ -298,10 +301,10 @@ def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False
                         shutil.copy(os.path.join(root,wav_name), os.path.join(destination_dir, wav_name))
                         print('copied')
                     if "Part1" in root:
-                        get_utterances_p1(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
+                        ot = get_utterances_p1(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
                     else:
-                        get_utterances_p2_4(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
-
+                        ot = get_utterances_p2_4(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
+                    pd.DataFrame(ot).to_csv(os.path.join(destination_dir, just_name+".csv"))
 
 
 # def get_words(source, dictionary):
