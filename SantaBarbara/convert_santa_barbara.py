@@ -77,7 +77,7 @@ def get_utterances_p2_4(file, textgrid_file):
 
     textgrid = tg.TextGrid()
     for i,speaker in enumerate(speakers.keys()):
-        tier = tg.IntervalTier(name = "{} - utterance".format(speaker.strip()))
+        tier = tg.IntervalTier(name = "{}".format(speaker.strip()))
         for j, tup in enumerate(speakers[speaker]):
             try:
                 if float(tup[0]) == float(tup[1]):
@@ -192,7 +192,7 @@ def get_utterances_p1(file, textgrid_file):
 
     textgrid = tg.TextGrid()
     for i,speaker in enumerate(speakers.keys()):
-        tier = tg.IntervalTier(name = "{} - utterance".format(speaker.strip()))
+        tier = tg.IntervalTier(name = "{}".format(speaker.strip()))
         for j, tup in enumerate(speakers[speaker]):
             try:
                 if float(tup[0]) == float(tup[1]):
