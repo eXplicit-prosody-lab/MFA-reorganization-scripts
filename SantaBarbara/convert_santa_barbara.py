@@ -63,12 +63,7 @@ def get_utterances_p2_4(file, textgrid_file):
             except IndexError:
                 label = ""
 
-
-        label = remove_regex.sub("", label)
-        label = sub_regex.sub("",label)
-        label = breath_regex.sub(BREATH_WORD_SB, label)
-        label = laugh_regex.sub(LAUGH_WORD_SB, label)
-        label = re.sub("([a-zA-Z]-)", r"[\1]", label)
+        label = preprocess_text_part_1(label)
 
         speaker = re.sub("[:\s]","",speaker)
         speaker = re.sub(">env","env", speaker.lower())
@@ -178,11 +173,7 @@ def get_utterances_p1(file, textgrid_file):
                     speaker = ordered_tups[i-1][2]
                 label = " ".join(total_split[3:])
 
-        label = remove_regex.sub("", label)
-        label = sub_regex.sub("",label)
-        label = breath_regex.sub(BREATH_WORD_SB, label)
-        label = laugh_regex.sub(LAUGH_WORD_SB, label)
-        label = re.sub("((?<![a-zA-Z])[a-zA-Z]-)", r"[\1]", label)
+        label = preprocess_text(label)
 
         speaker = re.sub("[:\s]","",speaker)
         speaker = re.sub(">env","env", speaker.lower())
@@ -230,6 +221,25 @@ def get_utterances_p1(file, textgrid_file):
 
     print("skipped: {}".format(skipped))
     return ordered_tups
+
+
+def preprocess_text(label):
+    label = remove_regex.sub("", label)
+    label = sub_regex.sub("", label)
+    label = breath_regex.sub(BREATH_WORD_SB, label)
+    label = laugh_regex.sub(LAUGH_WORD_SB, label)
+    label = re.sub("((?<![a-zA-Z])[a-zA-Z]-)", r"[\1]", label)
+    label = label.strip()
+    return label
+
+def preprocess_text_part_1(label):
+    label = remove_regex.sub("", label)
+    label = sub_regex.sub("", label)
+    label = breath_regex.sub(BREATH_WORD_SB, label)
+    label = laugh_regex.sub(LAUGH_WORD_SB, label)
+    label = re.sub("([a-zA-Z]-)", r"[\1]", label)
+    label = label.strip()
+    return label
 
 def clean(speakers):
     """
