@@ -10,7 +10,8 @@ remove_regex = re.compile(r"<<?[A-Z@]+|[A-Z@]+>?>|\(?\((?!H)[A-Z\-]+\)\)?")
 sub_regex = re.compile(r"\[[\d!]?|[\d!]?\]|\.{2,3}|[<>!=_%+;`\/\\&~]")
 breath_regex = re.compile(r"\(H+x*\)")
 laugh_regex = re.compile(r"@+")
-
+BREATH_WORD_SB = ""
+LAUGH_WORD_SB = ""
 
 def get_utterances_p2_4(file, textgrid_file):
     """ 
@@ -62,10 +63,11 @@ def get_utterances_p2_4(file, textgrid_file):
             except IndexError:
                 label = ""
 
+
         label = remove_regex.sub("", label)
         label = sub_regex.sub("",label)
-        label = breath_regex.sub("BREATH_WORD_SB", label)
-        label = laugh_regex.sub("LAUGH_WORD_SB", label)
+        label = breath_regex.sub(BREATH_WORD_SB, label)
+        label = laugh_regex.sub(LAUGH_WORD_SB, label)
         label = re.sub("([a-zA-Z]-)", r"[\1]", label)
 
         speaker = re.sub("[:\s]","",speaker)
@@ -178,8 +180,8 @@ def get_utterances_p1(file, textgrid_file):
 
         label = remove_regex.sub("", label)
         label = sub_regex.sub("",label)
-        label = breath_regex.sub("BREATH_WORD_SB", label)
-        label = laugh_regex.sub("LAUGH_WORD_SB", label)
+        label = breath_regex.sub(BREATH_WORD_SB, label)
+        label = laugh_regex.sub(LAUGH_WORD_SB, label)
         label = re.sub("((?<![a-zA-Z])[a-zA-Z]-)", r"[\1]", label)
 
         speaker = re.sub("[:\s]","",speaker)
