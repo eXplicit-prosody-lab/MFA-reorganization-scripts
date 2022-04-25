@@ -5,6 +5,8 @@ from collections import defaultdict
 import textgrid as tg
 import sys
 import pandas as pd
+import tgt
+
 
 remove_regex = re.compile(r"<<?[A-Z@]+|[A-Z@]+>?>|\(?\((?!H)[A-Z\-]+\)\)?")
 sub_regex = re.compile(r"\[[\d!]?|[\d!]?\]|\.{2,3}|[<>!=_%+;`\/\\&~]")
@@ -216,7 +218,8 @@ def get_utterances_p1(file, textgrid_file):
                 tier.add(float(tup[0]) + difference, float(tup[1]), tup[2].strip())
         if len(tier.intervals)>0:
             textgrid.append(tier)
-    
+
+
     textgrid.write(textgrid_file)
 
     print("skipped: {}".format(skipped))
@@ -287,6 +290,68 @@ def clean(speakers):
     return new_speakers
 
 
+def addition_processing_for_ordered_tuples(df_ot):
+    # get word info (with turn and IU tags)
+
+    all_words = df_ot.text.str.strip(to_strip=",.?-").str.split().explode()
+
+    df_words = all_words.rename("word").to_frame().join(df_ot).reset_index().rename(columns={"index": "iu_id"})
+
+    df_words = df_words[~df_words.word.str.contains("\[").astype(bool)]
+
+    df_words["is_iu_start"] = ~df_words.iu_id.duplicated(keep="first")
+    df_words["turn_id"] = (df_words.speaker_id != df_words.speaker_id.shift()).cumsum()
+
+    # remove overlapping IUs
+
+    df_ius = df_words.groupby("iu_id")[['xmin', 'xmax']].first()
+    is_overlap = (df_ius.xmin < df_ius.xmax.shift())
+    is_overlap = is_overlap | is_overlap.shift(-1)
+
+    non_overlapping_iu_ids = is_overlap[~is_overlap].index
+
+    df_words_wo_overlap = df_words[df_words.iu_id.isin(non_overlapping_iu_ids)]
+    return df_words_wo_overlap
+
+
+def df_to_tg(df: pd.DataFrame) -> tgt.TextGrid:
+    necessary_cols = {"xmin", "xmax", "text", "tier_name"}
+    missing_columns = necessary_cols - (set(df) & necessary_cols)
+    assert len(missing_columns) == 0, f"df is missing the columns {missing_columns}"
+
+    tg = tgt.TextGrid()
+    for name in df["tier_name"].unique():
+        objects = (
+            df[df["tier_name"] == name]
+            .apply(
+                lambda df_: tgt.Interval(df_["xmin"], df_["xmax"], df_["text"]), axis=1
+            )
+            .tolist()
+        )
+        tg.add_tier(
+            tgt.IntervalTier(
+                df["xmin"].iloc[0], df["xmax"].iloc[-1], name=name, objects=objects
+            )
+        )
+    return tg
+
+
+def from_df_words_to_mfa_input(df_words) -> tgt.TextGrid:
+    df_mfa_input = df_words.groupby("iu_id").agg(
+        {'xmin': "first",
+         'xmax': "first",
+         'speaker_id': "first",
+         'word': lambda x: " ".join(x),
+         }
+    )
+    df_mfa_input = df_mfa_input.rename(columns={
+        "speaker_id": "tier_name",
+        'word': "text",
+    })
+    tg_mfa_input = df_to_tg(df_mfa_input)
+    return tg_mfa_input
+
+
 def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False):
     """
     walk throught source dir, convert all .trn files to .textgrids
@@ -312,14 +377,24 @@ def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False
                         wav_name = just_name+ ".wav"
                         shutil.copy(os.path.join(root,wav_name), os.path.join(destination_dir, wav_name))
                         print('copied')
+
+                    output_path = os.path.join(destination_dir, just_name+".TextGrid")
                     if "Part1" in root:
-                        ot = get_utterances_p1(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
+                        ot = get_utterances_p1(os.path.join(root,file), output_path)
                     else:
-                        ot = get_utterances_p2_4(os.path.join(root,file), os.path.join(destination_dir, just_name+".TextGrid"))
-                    pd.DataFrame(ot).to_csv(os.path.join(destination_dir, just_name+".csv"))
+                        ot = get_utterances_p2_4(os.path.join(root,file), output_path)
+                    df_words = addition_processing_for_ordered_tuples(ot)
+                    df_words.to_csv(os.path.join(destination_dir, just_name+".csv"))
+                    tg_mfa_input = from_df_words_to_mfa_input(df_words)
+                    tgt.write_to_file(
+                        tg_mfa_input,
+                        output_path,
+                        format='long',
+                        encoding='utf-8',
+                    )
 
 
-# def get_words(source, dictionary):
+                # def get_words(source, dictionary):
 #     words = set()
 #     for root, dirs, files in os.walk(source, topdown = True):
 #         for file in files:
