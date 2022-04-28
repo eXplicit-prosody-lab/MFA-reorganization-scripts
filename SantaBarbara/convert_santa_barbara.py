@@ -293,14 +293,18 @@ def clean(speakers):
 def addition_processing_for_ordered_tuples(df_ot):
     # get word info (with turn and IU tags)
 
-    all_words = df_ot.text.str.strip(to_strip=",.?-").str.split().explode()
+    all_words = df_ot.text.str.strip(to_strip=",.?-").str.split().explode() # removes prototype (Maybe we need that inforamation in some way)
 
     df_words = all_words.rename("word").to_frame().join(df_ot).reset_index().rename(columns={"index": "iu_id"})
 
-    df_words = df_words[~df_words.word.str.contains("\[").astype(bool)]
+    df_words = df_words[~df_words.word.str.contains("\[").astype(bool)]  # remove words with '['
+    df_words = df_words[~df_words.word.str.contains("#").astype(bool)]  # remove words with '#'
+    df_words = df_words[~df_words.word.isin(['-', '--']).astype(bool)]  # remove '-' and '--' (boundary specification?)
 
     df_words["is_iu_start"] = ~df_words.iu_id.duplicated(keep="first")
     df_words["turn_id"] = (df_words.speaker_id != df_words.speaker_id.shift()).cumsum()
+
+    df_words["word"] = df_words["word"].str.lower()
 
     # remove overlapping IUs
 
@@ -319,11 +323,13 @@ def df_to_tg(df: pd.DataFrame) -> tgt.TextGrid:
     missing_columns = necessary_cols - (set(df) & necessary_cols)
     assert len(missing_columns) == 0, f"df is missing the columns {missing_columns}"
 
+    df = df.astype({"xmin":"float","xmax":"float"})
+
     tg = tgt.TextGrid()
     for name in df["tier_name"].unique():
+        df_sel = df[df["tier_name"] == name]
         objects = (
-            df[df["tier_name"] == name]
-            .apply(
+            df_sel.apply(
                 lambda df_: tgt.Interval(df_["xmin"], df_["xmax"], df_["text"]), axis=1
             )
             .tolist()
@@ -383,7 +389,11 @@ def convert_all(source_dir, destination_dir, exclude = tuple(), move_wav = False
                         ot = get_utterances_p1(os.path.join(root,file), output_path)
                     else:
                         ot = get_utterances_p2_4(os.path.join(root,file), output_path)
-                    df_words = addition_processing_for_ordered_tuples(ot)
+                    df_ot = pd.DataFrame(ot)
+                    df_ot.columns = ["xmin", "xmax", "speaker_id", "text"]
+                    df_ot = df_ot.dropna()
+
+                    df_words = addition_processing_for_ordered_tuples(df_ot)
                     df_words.to_csv(os.path.join(destination_dir, just_name+".csv"))
                     tg_mfa_input = from_df_words_to_mfa_input(df_words)
                     tgt.write_to_file(
